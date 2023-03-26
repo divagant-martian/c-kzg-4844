@@ -6,9 +6,11 @@ mod test_formats;
 
 include!("generated.rs");
 
+use libc::fopen;
 use std::ffi::CString;
 use std::mem::MaybeUninit;
 use std::os::fd::AsRawFd;
+use std::os::unix::prelude::OsStrExt;
 use std::path::PathBuf;
 
 pub const BYTES_PER_G1_POINT: usize = 48;
