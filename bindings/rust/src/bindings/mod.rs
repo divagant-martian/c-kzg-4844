@@ -9,6 +9,7 @@ include!("generated.rs");
 use libc::fopen;
 use std::ffi::CString;
 use std::mem::MaybeUninit;
+use std::os::fd::AsRawFd;
 use std::os::unix::prelude::OsStrExt;
 use std::path::PathBuf;
 
@@ -102,21 +103,27 @@ impl KZGSettings {
     /// FIELD_ELEMENT_PER_BLOB g1 byte values
     /// 65 g2 byte values
     pub fn load_trusted_setup_file(file_path: PathBuf) -> Result<Self, Error> {
-        let file_path = CString::new(file_path.as_os_str().as_bytes()).map_err(|e| {
-            Error::InvalidTrustedSetup(format!("Invalid trusted setup file: {:?}", e))
-        })?;
+        let file = std::fs::File::open(file_path).unwrap();
+        let fd = file.as_raw_fd();
+        let mode = &('r' as libc::c_char);
+        let file_ptr = unsafe { libc::fdopen(fd, mode) };
+        if file_ptr.is_null() {
+            let e = std::io::Error::last_os_error();
+            panic!("{e}")
+        }
+
         let mut kzg_settings = MaybeUninit::<KZGSettings>::uninit();
-        unsafe {
-            let file_ptr = fopen(file_path.as_ptr(), &('r' as libc::c_char));
-            let res = load_trusted_setup_file(kzg_settings.as_mut_ptr(), file_ptr);
-            if let C_KZG_RET::C_KZG_OK = res {
-                Ok(kzg_settings.assume_init())
-            } else {
-                Err(Error::InvalidTrustedSetup(format!(
-                    "Invalid trusted setup: {:?}",
-                    res
-                )))
-            }
+
+        let res = unsafe { load_trusted_setup_file(kzg_settings.as_mut_ptr(), file_ptr) };
+        // Close the file stream.
+        unsafe { libc::fclose(file_ptr) };
+        if let C_KZG_RET::C_KZG_OK = res {
+            Ok(unsafe { kzg_settings.assume_init() })
+        } else {
+            Err(Error::InvalidTrustedSetup(format!(
+                "Invalid trusted setup: {:?}",
+                res
+            )))
         }
     }
 }
