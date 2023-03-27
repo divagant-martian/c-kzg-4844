@@ -15,7 +15,7 @@ fn move_file(src: &Path, dst: &Path) -> Result<(), String> {
 
 fn main() {
     let cargo_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let root_dir = cargo_dir.join("..").join("..");
+    let root_dir = cargo_dir.join("../../");
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
     // Ensure libblst exists in `OUT_DIR`
@@ -26,7 +26,7 @@ fn main() {
         .status()
         .unwrap();
     move_file(
-        root_dir.join("lib").join("libblst.a").as_path(),
+        root_dir.join("lib/libblst.a").as_path(),
         out_dir.join("libblst.a").as_path(),
     )
     .unwrap();
@@ -41,7 +41,7 @@ fn main() {
 
     // Deleting any existing assembly and object files to ensure that compiling with a different
     // feature flag changes the final linked library file.
-    let obj_file = root_dir.join("src").join("c_kzg_4844.o");
+    let obj_file = root_dir.join("src/c_kzg_4844.o");
     if obj_file.exists() {
         std::fs::remove_file(obj_file).unwrap();
     }
@@ -63,7 +63,7 @@ fn main() {
         .status()
         .unwrap();
     move_file(
-        root_dir.join("src").join("libckzg.a").as_path(),
+        root_dir.join("src/libckzg.a").as_path(),
         out_dir.join("libckzg.a").as_path(),
     )
     .unwrap();
@@ -73,7 +73,7 @@ fn main() {
     println!("cargo:rustc-link-lib=static=ckzg");
     println!("cargo:rustc-link-lib=static=blst");
 
-    let bindings_out_path = cargo_dir.join("src").join("bindings").join("generated.rs");
+    let bindings_out_path = cargo_dir.join("src/bindings/generated.rs");
     let build_target = env::var("TARGET").unwrap();
     let snapshot_path = cargo_dir.join("snapshots").join(format!(
         "bindings_{build_target}_{field_elements_per_blob}.rs"
@@ -86,7 +86,7 @@ fn main() {
     );
 
     // Cleanup
-    let obj_file = root_dir.join("src").join("c_kzg_4844.o");
+    let obj_file = root_dir.join("src/c_kzg_4844.o");
     if obj_file.exists() {
         std::fs::remove_file(obj_file).unwrap();
     }
@@ -124,7 +124,7 @@ fn make_bindings<P>(
         }
     }
 
-    let header_file_path = root_dir.join("src").join("c_kzg_4844.h");
+    let header_file_path = root_dir.join("src/c_kzg_4844.h");
     let header_file = header_file_path.to_str().expect("valid header file");
     println!("cargo:warning={header_file}");
 
@@ -146,7 +146,7 @@ fn make_bindings<P>(
         // Since this is not part of the header file, needs to be allowed explicitly.
         .allowlist_var("FIELD_ELEMENTS_PER_BLOB")
         // Get bindings only for the header file.
-        .allowlist_file(header_file)
+        .allowlist_file(".*/c_kzg_4844.h")
         /*
          * Cleanup instructions.
          */
